@@ -28,6 +28,7 @@ in {
 
   environment.systemPackages = with pkgs; [
     tilix
+    discord
     wget
     vim
     (vivaldi.override {
@@ -89,7 +90,10 @@ in {
 
   networking.wireless = {
     enable = true;
-    networks = { "TP-Link_E4E8_5G" = { pskRaw = secrets.home_wifi_password; }; };
+    networks = {
+      "TP-Link_E4E8_5G" = { pskRaw = secrets.home_wifi_password; };
+      "Touchdown Coworking" = { pskRaw = secrets.tc_wifi_password; };
+    };
   };
 
   security.sudo.wheelNeedsPassword = false;
