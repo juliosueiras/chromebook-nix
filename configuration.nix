@@ -1,14 +1,12 @@
 { config, pkgs, ... }:
 
 let
+  anboxConfig = import ./packages/anbox-extra/default.nix;
   home-manager = fetchTarball
     "https://github.com/rycee/home-manager/archive/a3dd580adc46628dd0c970037b6c87cff1251af5.tar.gz";
   secrets = import ./secrets.nix;
 in {
-  imports = [
-    ./hardware-configuration.nix
-    "${home-manager}/nixos"
-  ];
+  imports = [ ./hardware-configuration.nix "${home-manager}/nixos" ];
 
   boot.loader = {
     systemd-boot.enable = true;
@@ -36,6 +34,38 @@ in {
       enableWidevine = true;
     })
   ];
+
+  boot.binfmt = {
+    registrations = {
+      arm_exe = {
+        interpreter = "/system/lib/arm/houdini";
+        magicOrExtension =
+          "\\x7f\\x45\\x4c\\x46\\x01\\x01\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x02\\x00\\x28";
+        preserveArgvZero = true;
+      };
+
+      arm_dyn = {
+        interpreter = "/system/lib/arm/houdini";
+        magicOrExtension =
+          "\\x7f\\x45\\x4c\\x46\\x01\\x01\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x03\\x00\\x28";
+        preserveArgvZero = true;
+      };
+
+      arm64_exe = {
+        interpreter = "/system/lib64/arm64/houdini64";
+        magicOrExtension =
+          "\\x7f\\x45\\x4c\\x46\\x02\\x01\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x02\\x00\\xb7";
+        preserveArgvZero = true;
+      };
+
+      arm64_dyn = {
+        interpreter = "/system/lib64/arm64/houdini64";
+        magicOrExtension =
+          "\\x7f\\x45\\x4c\\x46\\x02\\x01\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x03\\x00\\xb7";
+        preserveArgvZero = true;
+      };
+    };
+  };
 
   virtualisation.docker.enable = true;
   virtualisation.anbox.enable = true;
@@ -118,5 +148,14 @@ in {
       pinentry-program ${pkgs.pinentry.qt}/bin/pinentry-qt
     '';
   };
+
+  systemd.services.anbox-container-manager.preStart = pkgs.lib.mkAfter ''
+    cp -r ${anboxConfig}/overlays/* /var/lib/anbox/rootfs-overlay/
+    chown -R 100000:100000 /var/lib/anbox/rootfs-overlay/system/lib/arm
+    chown -R 100000:100000 /var/lib/anbox/rootfs-overlay/system/lib64/arm64
+
+    cd /var/lib/anbox/rootfs-overlay/system/priv-app
+    chown -R 100000:100000 Phonesky GoogleServicesFramework GoogleLoginService PrebuiltGmsCore
+  '';
 }
 
